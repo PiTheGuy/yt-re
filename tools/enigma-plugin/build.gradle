@@ -1,6 +1,6 @@
 dependencies {
-	api "cuchaz:enigma:${project.enigma_version}"
-	implementation "cuchaz:enigma-swing:${project.enigma_version}"
+	api "cuchaz:enigma:${project.fabric_enigma_version}"
+	implementation "cuchaz:enigma-swing:${project.fabric_enigma_version}"
 
 	implementation "org.ow2.asm:asm:${project.asm_version}"
 	implementation "org.ow2.asm:asm-commons:${project.asm_version}"

@@ -17,7 +17,7 @@ buildscript {
 		mavenLocal()
 	}
 	dependencies {
-		classpath "cuchaz:enigma-cli:${project.enigma_version}"
+		classpath "cuchaz:enigma-cli:${project.fabric_enigma_version}"
 		classpath "commons-io:commons-io:${project.commonsio_version}"
 		classpath "net.fabricmc:mapping-io:${project.mappingio_version}"
 		classpath "net.fabricmc:tiny-remapper:${project.tiny_remapper_version}"
@@ -61,13 +61,24 @@ allprojects {
 			name = 'FlexVer'
 			url = 'https://repo.sleeping.town/'
 		}
+		maven {
+			name = 'QuiltMC'
+			url = 'https://maven.quiltmc.org/repository/release/'
+		}
+		maven {
+			name = 'Sonatype OSS'
+			url = 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+		}
 		mavenLocal()
 	}
 }
 
 configurations {
 	asm
-	enigmaClasspath {
+	fabricEnigmaClasspath {
+		extendsFrom asm
+	}
+	quiltEnigmaClasspath {
 		extendsFrom asm
 	}
 	jadxClasspath
@@ -86,9 +97,10 @@ configurations {
 }
 
 dependencies {
-	enigmaClasspath "cuchaz:enigma-swing:${project.enigma_version}"
-	enigmaClasspath "net.fabricmc:name-proposal:${project.name_proposal_version}"
-	enigmaClasspath project(':tools:enigma-plugin')
+	fabricEnigmaClasspath "cuchaz:enigma-swing:${project.fabric_enigma_version}"
+	fabricEnigmaClasspath "net.fabricmc:name-proposal:${project.name_proposal_version}"
+	fabricEnigmaClasspath project(':tools:enigma-plugin')
+	quiltEnigmaClasspath "org.quiltmc:enigma-swing:${project.quilt_enigma_version}"
 	jadxClasspath ("com.github.NebelNidas.jadx:jadx-gui:${project.jadx_version}:all") {
 		transitive = false
 	}
@@ -622,7 +634,7 @@ task mergeDuplicateMappings(dependsOn: checkMappings) {
 task enigma(dependsOn: checkMappings, type: JavaExec) {
 	group = mappingsGroup
 
-	classpath = configurations.enigmaClasspath
+	classpath = configurations.fabricEnigmaClasspath
 	mainClass = 'cuchaz.enigma.gui.Main'
 
 	args '-jar'
@@ -631,6 +643,20 @@ task enigma(dependsOn: checkMappings, type: JavaExec) {
 	args mappingsDir.getAbsolutePath()
 	args '-profile'
 	args 'enigma_profile.json'
+
+	jvmArgs project.enigma_jvmargs
+}
+
+task enigmaQuilt(dependsOn: checkMappings, type: JavaExec) {
+	group = mappingsGroup
+
+	classpath = configurations.quiltEnigmaClasspath
+	mainClass = 'org.quiltmc.enigma.gui.Main'
+
+	args '-jar'
+	args youtubeJarCleaned.getAbsolutePath()
+	args '-mappings'
+	args mappingsDir.getAbsolutePath()
 
 	jvmArgs project.enigma_jvmargs
 }
