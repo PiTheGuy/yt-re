@@ -22,16 +22,15 @@ buildscript {
 		classpath "net.fabricmc:mapping-io:${project.mappingio_version}"
 		classpath "net.fabricmc:tiny-remapper:${project.tiny_remapper_version}"
 		classpath "net.fabricmc:name-proposal:${project.name_proposal_version}"
-		classpath ("com.github.ThexXTURBOXx.dex2jar:dex-translator:v${project.dex2jar_version}") {
-			exclude group: 'com.github.ThexXTURBOXx.dex2jar', module: 'd2j-base-cmd'
-		}
+		classpath "de.femtopedia.dex2jar:dex-translator:${project.dex2jar_version}"
 	}
 }
 
 plugins {
 	id 'java' // for constants, packages, javadoc
 	id 'maven-publish'
-	id 'net.fabricmc.filament' version '0.3.+'
+	id 'net.fabricmc.filament'
+	id 'org.openjfx.javafxplugin'
 	id 'checkstyle'
 }
 
@@ -39,8 +38,10 @@ allprojects {
 	apply plugin: 'java-library'
 	apply plugin: 'checkstyle'
 
-	sourceCompatibility = JavaVersion.VERSION_17
-	targetCompatibility = JavaVersion.VERSION_17
+	java {
+		sourceCompatibility = JavaVersion.VERSION_17
+		targetCompatibility = JavaVersion.VERSION_17
+	}
 
 	checkstyle {
 		configFile = rootProject.file('checkstyle.xml')
@@ -49,7 +50,7 @@ allprojects {
 	repositories {
 		mavenCentral()
 		maven {
-			name "Fabric Repository"
+			name "FabricMC"
 			url 'https://maven.fabricmc.net'
 		}
 		google()
@@ -65,13 +66,12 @@ allprojects {
 			name = 'QuiltMC'
 			url = 'https://maven.quiltmc.org/repository/release/'
 		}
-		maven {
-			name = 'Sonatype OSS'
-			url = 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
-		}
 		mavenLocal()
 	}
 }
+
+import org.gradle.nativeplatform.platform.OperatingSystem
+import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 
 configurations {
 	asm
@@ -81,10 +81,20 @@ configurations {
 	quiltEnigmaClasspath {
 		extendsFrom asm
 	}
+	matcherClasspath {
+		extendsFrom asm
+		attributes {
+			// Select natives for the current platform
+			def os = DefaultNativePlatform.getCurrentOperatingSystem().toFamilyName()
+			def arch = DefaultNativePlatform.getCurrentArchitecture().name
+			attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME))
+			attribute(OperatingSystemFamily.OPERATING_SYSTEM_ATTRIBUTE, objects.named(OperatingSystemFamily, os))
+			attribute(MachineArchitecture.ARCHITECTURE_ATTRIBUTE, objects.named(MachineArchitecture, arch))
+		}
+	}
 	jadxClasspath
 	stitchClasspath
 	gitifierClasspath
-	matcherClasspath
 	javadocClasspath
 	mappingPoetJar {
 		transitive = false
@@ -97,36 +107,23 @@ configurations {
 }
 
 dependencies {
+	asm "org.ow2.asm:asm:${project.asm_version}"
+	asm "org.ow2.asm:asm-tree:${project.asm_version}"
+	asm "org.ow2.asm:asm-commons:${project.asm_version}"
+	asm "org.ow2.asm:asm-util:${project.asm_version}"
 	fabricEnigmaClasspath "cuchaz:enigma-swing:${project.fabric_enigma_version}"
 	fabricEnigmaClasspath "net.fabricmc:name-proposal:${project.name_proposal_version}"
 	fabricEnigmaClasspath project(':tools:enigma-plugin')
 	quiltEnigmaClasspath "org.quiltmc:enigma-swing:${project.quilt_enigma_version}"
-	jadxClasspath ("com.github.NebelNidas.jadx:jadx-gui:${project.jadx_version}:all") {
-		transitive = false
-	}
+	matcherClasspath "com.github.NebelNidas:Matcher:${project.matcher_version}"
+	jadxClasspath "io.github.skylot:jadx-gui:${project.jadx_version}"
 	stitchClasspath "com.github.NebelNidas.stitch:stitch:${project.stitch_version}"
 	stitchClasspath project(':tools:stitch-plugin')
 	gitifierClasspath project(':tools:gitifier')
-	matcherClasspath "com.github.NebelNidas:Matcher:${project.matcher_version}:all"
 	javadocClasspath "org.jetbrains:annotations:${project.jetbrains_annotations_version}"
 	javadocClasspath "com.google.code.findbugs:jsr305:3.0.2" // for some other jsr annotations
 	mappingPoetJar "net.fabricmc:mappingpoet:${project.mappingpoet_version}"
-	asm ("org.ow2.asm:asm:${project.asm_version}") {
-		force = true
-	}
-	asm ("org.ow2.asm:asm-tree:${project.asm_version}") {
-		force = true
-	}
-	asm ("org.ow2.asm:asm-commons:${project.asm_version}") {
-		force = true
-	}
-	asm ("org.ow2.asm:asm-util:${project.asm_version}") {
-		force = true
-	}
 }
-
-sourceCompatibility = JavaVersion.VERSION_17
-targetCompatibility = JavaVersion.VERSION_17
 
 tasks.withType(JavaCompile).configureEach {
 	it.options.encoding = "UTF-8"
