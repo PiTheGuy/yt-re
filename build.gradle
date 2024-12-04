@@ -351,7 +351,7 @@ clean.doFirst {
 }
 
 
-task validateApkChecksum {
+tasks.register("validateApkChecksum") {
 	doLast {
 		logger.lifecycle(":validating youtube apk checksum")
 
@@ -364,11 +364,12 @@ task validateApkChecksum {
 
 import com.googlecode.d2j.dex.Dex2jar
 
-task convertApkToJar(dependsOn: validateApkChecksum, type: FileIO) {
+tasks.register("convertApkToJar", FileIO) {
+	dependsOn validateApkChecksum
 	group = setupGroup
 	input = youtubeApk
 	output = youtubeJar
-	enabled = !youtubeJar.exists() || youtubeJar.length() < 30000000
+	enabled = !youtubeJar.exists() || youtubeJar.length() < 44_000_000
 
 	doLast {
 		logger.lifecycle(":deleting old cache")
@@ -382,10 +383,11 @@ task convertApkToJar(dependsOn: validateApkChecksum, type: FileIO) {
 	}
 }
 
-task copyYoutubeJarForCleanup(dependsOn: convertApkToJar, type: FileIO) {
+tasks.register("copyYoutubeJarForCleanup", FileIO) {
+	dependsOn convertApkToJar
 	input youtubeJar
 	output youtubeJarCleaned
-	enabled = !youtubeJarCleaned.exists() || youtubeJarCleaned.length() < 30000000
+	enabled = !youtubeJarCleaned.exists() || youtubeJarCleaned.length() < 44_000_000
 
 	doLast {
 		logger.lifecycle(":copying youtube jar for cleanup")
@@ -400,7 +402,8 @@ task copyYoutubeJarForCleanup(dependsOn: convertApkToJar, type: FileIO) {
 }
 
 
-task removeUnneededPackagesFromJar(dependsOn: copyYoutubeJarForCleanup, type: FileIO) {
+tasks.register("removeUnneededPackagesFromJar", FileIO) {
+	dependsOn copyYoutubeJarForCleanup
 	group = setupGroup
 	input = youtubeJarCleaned
 	output = youtubeJarCleaned
@@ -412,7 +415,8 @@ task removeUnneededPackagesFromJar(dependsOn: copyYoutubeJarForCleanup, type: Fi
 }
 
 
-task checkMappings(dependsOn: removeUnneededPackagesFromJar) {
+tasks.register("checkMappings") {
+	dependsOn removeUnneededPackagesFromJar
 	group = buildMappingGroup
 	inputs.dir mappingsDir
 
@@ -439,7 +443,7 @@ task checkMappings(dependsOn: removeUnneededPackagesFromJar) {
 //      Export mappings
 // **************************
 
-task buildTinyMappingFiles(type: TinyMappingsOutput) {
+tasks.register("buildTinyMappingFiles", TinyMappingsOutput) {
 	group = buildMappingGroup
 	inputs.dir mappingsDir
 
@@ -455,8 +459,7 @@ task buildTinyMappingFiles(type: TinyMappingsOutput) {
 			"enigma",
 			mappingsDir.getAbsolutePath(),
 			"tinyv2:official:named",
-			tiny2Output.getAbsolutePath()
-		)
+			tiny2Output.getAbsolutePath())
 
 		new ConvertMappingsCommand().run(
 			"tinyv2",
@@ -467,7 +470,8 @@ task buildTinyMappingFiles(type: TinyMappingsOutput) {
 }
 
 
-task buildNamedJar(dependsOn: [buildTinyMappingFiles, convertApkToJar]) {
+tasks.register("buildNamedJar") {
+	dependsOn buildTinyMappingFiles, convertApkToJar
 	group = mapJarGroup
 	inputs.file youtubeJar
 	outputs.file youtubeJarNamed
@@ -500,7 +504,8 @@ task buildNamedJar(dependsOn: [buildTinyMappingFiles, convertApkToJar]) {
 //         Javadoc
 // **************************
 
-task genFakeSource(dependsOn: [buildTinyMappingFiles, buildNamedJar], type: JavaExec) {
+tasks.register("genFakeSource", JavaExec) {
+	dependsOn buildTinyMappingFiles, buildNamedJar
 	group = "javadoc generation"
 	outputs.upToDateWhen { false }
 
@@ -589,7 +594,8 @@ javadoc {
 }
 
 
-task javadocJar(dependsOn: javadoc, type: Jar) {
+tasks.register("javadocJar", Jar) {
+	dependsOn javadoc
 	group = "javadoc generation"
 
 	from javadoc.destinationDir
@@ -616,7 +622,8 @@ import net.fabricmc.mappingio.MappingWriter;
 import net.fabricmc.mappingio.format.MappingFormat;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 
-task mergeDuplicateMappings(dependsOn: checkMappings) {
+tasks.register("mergeDuplicateMappings") {
+	dependsOn checkMappings
 	group = mappingsGroup
 
 	doLast {
@@ -628,7 +635,8 @@ task mergeDuplicateMappings(dependsOn: checkMappings) {
 	}
 }
 
-task enigma(dependsOn: checkMappings, type: JavaExec) {
+tasks.register("enigma", JavaExec) {
+	dependsOn checkMappings
 	group = mappingsGroup
 
 	classpath = configurations.fabricEnigmaClasspath
@@ -644,7 +652,8 @@ task enigma(dependsOn: checkMappings, type: JavaExec) {
 	jvmArgs project.enigma_jvmargs
 }
 
-task enigmaQuilt(dependsOn: checkMappings, type: JavaExec) {
+tasks.register("enigmaQuilt", JavaExec) {
+	dependsOn checkMappings
 	group = mappingsGroup
 
 	classpath = configurations.quiltEnigmaClasspath
@@ -659,7 +668,7 @@ task enigmaQuilt(dependsOn: checkMappings, type: JavaExec) {
 }
 
 
-task prepareJadx {
+tasks.register("prepareJadx") {
 	enabled = !jadxProjectFile.exists()
 
 	doLast {
@@ -677,7 +686,8 @@ task prepareJadx {
 }
 
 
-task jadx(dependsOn: [validateApkChecksum, prepareJadx], type: JavaExec) {
+tasks.register("jadx", JavaExec) {
+	dependsOn validateApkChecksum, prepareJadx
 	group = mappingsGroup
 
 	classpath = configurations.jadxClasspath
@@ -691,10 +701,9 @@ task jadx(dependsOn: [validateApkChecksum, prepareJadx], type: JavaExec) {
 }
 
 
-task validateNewVersionProp {
+tasks.register("validateNewVersionProp") {
 	if (!project.hasProperty('newYtVersion')) {
-		// Use a dummy version during project evaluation,
-		// otherwise tasks like `clean` would crash.
+		// Use a dummy version during project evaluation. Works around an IntelliJ IDEA crash.
 		project.ext.newYtVersion = '0.0.0'
 
 		doLast {
@@ -708,7 +717,8 @@ task validateNewVersionProp {
 }
 
 
-task prepareJadxForNewYtVersion(dependsOn: validateNewVersionProp) {
+tasks.register("prepareJadxForNewYtVersion") {
+	dependsOn validateNewVersionProp
 	def newJadxProjectFile = getJadxProjectFile(newYtVersion)
 	enabled = !newJadxProjectFile.exists()
 
@@ -727,7 +737,8 @@ task prepareJadxForNewYtVersion(dependsOn: validateNewVersionProp) {
 }
 
 
-task jadxNewYtVersion(dependsOn: [validateApkChecksum, prepareJadxForNewYtVersion], type: JavaExec) {
+tasks.register("jadxNewYtVersion", JavaExec) {
+	dependsOn validateApkChecksum, prepareJadxForNewYtVersion
 	group = mappingsGroup
 
 	classpath = configurations.jadxClasspath
@@ -738,14 +749,15 @@ task jadxNewYtVersion(dependsOn: [validateApkChecksum, prepareJadxForNewYtVersio
 }
 
 
-task convertApkToMatchAgainstToJar(dependsOn: validateNewVersionProp, type: FileIO) {
+tasks.register("convertApkToMatchAgainstToJar", FileIO) {
+	dependsOn validateNewVersionProp
 	def youtubeApkToMatchAgainst = getYoutubeApk(newYtVersion)
 	def youtubeJarToMatchAgainst = getYoutubeJar(newYtVersion)
 
 	group = setupGroup
 	input = youtubeApkToMatchAgainst
 	output = youtubeJarToMatchAgainst
-	enabled = !youtubeJarToMatchAgainst.exists() || youtubeJarToMatchAgainst.length() < 30000000
+	enabled = !youtubeJarToMatchAgainst.exists() || youtubeJarToMatchAgainst.length() < 44_000_000
 
 	doLast {
 		logger.lifecycle(":converting new youtube version apk to jar")
@@ -757,7 +769,8 @@ task convertApkToMatchAgainstToJar(dependsOn: validateNewVersionProp, type: File
 }
 
 
-task matcher(dependsOn: [convertApkToJar, convertApkToMatchAgainstToJar], type: JavaExec) {
+tasks.register("matcher", JavaExec) {
+	dependsOn convertApkToJar, convertApkToMatchAgainstToJar
 	group = mappingsGroup
 
 	classpath = configurations.matcherClasspath
@@ -784,7 +797,7 @@ task matcher(dependsOn: [convertApkToJar, convertApkToMatchAgainstToJar], type: 
 	jvmArgs project.matcher_jvmargs
 }
 
-task generateGitRepo(type: JavaExec) {
+tasks.register("generateGitRepo", JavaExec) {
 	classpath = configurations.gitifierClasspath
 	mainClass = 'ytre.gitifier.Main'
 
@@ -803,10 +816,11 @@ task generateGitRepo(type: JavaExec) {
 //       Intermediary
 // **************************
 
-task copyYoutubeJarToMatchAgainstForCleanup(dependsOn: convertApkToMatchAgainstToJar) {
+tasks.register("copyYoutubeJarToMatchAgainstForCleanup") {
+	dependsOn convertApkToMatchAgainstToJar
 	def youtubeJarToMatchAgainst = getYoutubeJar(newYtVersion)
 	def youtubeJarToMatchAgainstCleaned = getCleanedYoutubeJar(newYtVersion)
-	enabled = !youtubeJarToMatchAgainstCleaned.exists() || youtubeJarToMatchAgainstCleaned.length() < 30000000
+	enabled = !youtubeJarToMatchAgainstCleaned.exists() || youtubeJarToMatchAgainstCleaned.length() < 44_000_000
 
 	doLast {
 		logger.lifecycle(":copying new youtube jar for cleanup")
@@ -821,7 +835,8 @@ task copyYoutubeJarToMatchAgainstForCleanup(dependsOn: convertApkToMatchAgainstT
 }
 
 
-task removeUnneededPackagesFromJarToMatchAgainst(dependsOn: copyYoutubeJarToMatchAgainstForCleanup, type: FileIO) {
+tasks.register("removeUnneededPackagesFromJarToMatchAgainst", FileIO) {
+	dependsOn copyYoutubeJarToMatchAgainstForCleanup
 	group = setupGroup
 
 	def youtubeJarToMatchAgainstCleaned = getCleanedYoutubeJar(newYtVersion)
@@ -835,7 +850,8 @@ task removeUnneededPackagesFromJarToMatchAgainst(dependsOn: copyYoutubeJarToMatc
 }
 
 
-task generateIntermediary(dependsOn: removeUnneededPackagesFromJar, type: JavaExec) {
+tasks.register("generateIntermediary", JavaExec) {
+	dependsOn removeUnneededPackagesFromJar
 	group = mappingsGroup
 	enabled = !intermediaryFile.exists()
 
@@ -851,7 +867,8 @@ task generateIntermediary(dependsOn: removeUnneededPackagesFromJar, type: JavaEx
 }
 
 
-task updateIntermediary(dependsOn: [generateIntermediary, removeUnneededPackagesFromJarToMatchAgainst], type: JavaExec) {
+tasks.register("updateIntermediary", JavaExec) {
+	dependsOn generateIntermediary, removeUnneededPackagesFromJarToMatchAgainst
 	def newIntermediaryFile = getIntermediaryFile(newYtVersion)
 
 	group = mappingsGroup
